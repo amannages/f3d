@@ -84,6 +84,8 @@ public:
     double RefThreshold;
     std::string InteractionTestRecordFile;
     std::string InteractionTestPlayFile;
+
+    std::string CommandScriptFile; //Added a CommandSciptFile to the F3DAppOptions 
   };
 
   void SetupCamera(const CameraConfiguration& camConf)
@@ -591,6 +593,9 @@ public:
       f3d::options::parse<std::string>(appOptions.at("interaction-test-record"));
     this->AppOptions.InteractionTestPlayFile =
       f3d::options::parse<std::string>(appOptions.at("interaction-test-play"));
+
+    this->AppOptions.CommandScriptFile = 
+      f3d::options::parse<std::string>(appOptions.at("command-script")); //Added this for parsing
   }
 
   void UpdateInterdependentOptions()
@@ -953,6 +958,34 @@ int F3DStarter::Start(int argc, char** argv)
       if (!interactor.recordInteraction(interactionTestRecordFile))
       {
         return EXIT_FAILURE;
+      }
+    }
+
+    // Added the CommandScriptFile here for parsing, but receive "map::at:  key not found" error
+    const std::string& commandScriptFile = 
+      this->Internals->AppOptions.CommandScriptFile;
+    if (!commandScriptFile.empty())
+    {
+      std::ifstream scriptFile(commandScriptFile);
+      if (scriptFile.is_open())
+      {
+        std::string command;
+        while (std::getline(scriptFile, command))
+        {
+          if (!command.empty() && command[0] != '#')
+          {
+            if (!interactor.triggerCommand(command))
+            {
+              return EXIT_FAILURE;
+            }
+          }
+        }
+        scriptFile.close();
+      }
+      else
+      {
+          f3d::log::error("Unable to open command script file: ", commandScriptFile);
+          return EXIT_FAILURE;
       }
     }
 
